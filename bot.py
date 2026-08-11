@@ -203,37 +203,30 @@ def piped_url_al(video_id: str) -> dict | None:
             continue
     return None
 
+# Residential/mobil proxy — datacenter IP engelini aşmanın tek güvenilir yolu.
+# Railway'de PROXY_URL ortam değişkeni olarak ayarla, örn:
+#   http://kullanici:sifre@host:port   veya   socks5://kullanici:sifre@host:port
+PROXY_URL = os.environ.get("PROXY_URL", "").strip()
+if PROXY_URL:
+    print(f"🌐 Proxy kullanılıyor: {PROXY_URL.split('@')[-1]}", flush=True)
+
+BGUTIL_BASEURL = os.environ.get("GETPOT_BGUTIL_BASEURL", "http://127.0.0.1:4416")
+
 def ses_url_al(video_id: str) -> dict | None:
     yt_url = f"https://www.youtube.com/watch?v={video_id}"
 
-    # Strategy 1: web client with po_token via bgutil (best for datacenter IPs)
+    # Her strateji POT sunucusunu kullanır (datacenter IP bypass için en iyisi)
+    _pot = {"getpot_bgutil": {"baseurl": [BGUTIL_BASEURL]}}
     stratejiler = [
-        {
-            "extractor_args": {
-                "youtube": {"player_client": ["web"]},
-                "getpot_bgutil": {"baseurl": ["http://localhost:4416"]},
-            }
-        },
-        {
-            "extractor_args": {
-                "youtube": {"player_client": ["tv_embedded"]},
-                "getpot_bgutil": {"baseurl": ["http://localhost:4416"]},
-            }
-        },
-        {
-            "extractor_args": {
-                "youtube": {"player_client": ["ios"]},
-            }
-        },
-        {
-            "extractor_args": {
-                "youtube": {"player_client": ["android"]},
-            }
-        },
+        {"youtube": {"player_client": ["tv_embedded"]}, **_pot},
+        {"youtube": {"player_client": ["web"]},         **_pot},
+        {"youtube": {"player_client": ["mweb"]},        **_pot},
+        {"youtube": {"player_client": ["ios"]},         **_pot},
+        {"youtube": {"player_client": ["android"]},     **_pot},
     ]
 
-    for extra in stratejiler:
-        client = list(extra["extractor_args"]["youtube"]["player_client"])[0]
+    for extractor_args in stratejiler:
+        client = extractor_args["youtube"]["player_client"][0]
         try:
             opts = {
                 "format": "bestaudio/best",
@@ -242,10 +235,12 @@ def ses_url_al(video_id: str) -> dict | None:
                 "ignoreerrors": False,
                 "quiet": True,
                 "no_warnings": True,
-                **extra,
+                "extractor_args": extractor_args,
             }
             if COOKIES_PATH:
                 opts["cookiefile"] = COOKIES_PATH
+            if PROXY_URL:
+                opts["proxy"] = PROXY_URL
 
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(yt_url, download=False)
@@ -259,7 +254,7 @@ def ses_url_al(video_id: str) -> dict | None:
                         "webpage_url": yt_url,
                     }
         except Exception as e:
-            print(f"yt-dlp hatası [{client}]: {e}", flush=True)
+            print(f"yt-dlp hatası [{client}]: {str(e).splitlines()[0]}", flush=True)
             continue
 
     print(f"⚠️ Tüm yöntemler başarısız: {video_id}", flush=True)
