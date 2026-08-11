@@ -25,16 +25,39 @@ from discord.ext import commands
 import yt_dlp
 
 # ---------------------------------------------------------------------------
-# Opus
+# Opus — Discord ses kodlaması için gerekli
 # ---------------------------------------------------------------------------
-if not discord.opus.is_loaded():
-    for lib in ['libopus.so.0', 'libopus.so', 'opus', 'libopus']:
+def _opus_yukle():
+    import glob as _g
+    import ctypes.util
+    if discord.opus.is_loaded():
+        print("Opus zaten yüklü", flush=True)
+        return
+    # 1) Standart isimler
+    adaylar = ['libopus.so.0', 'libopus.so', 'opus', 'libopus',
+               'libopus.so.0.10.1', 'libopus.0.dylib', 'libopus.dylib']
+    # 2) ctypes ile sistemde bul
+    bulunan = ctypes.util.find_library('opus')
+    if bulunan:
+        adaylar.insert(0, bulunan)
+    # 3) nix store ve yaygın dizinlerde ara (Railway/Nixpacks)
+    for pat in ("/nix/store/*opus*/lib/libopus.so*",
+                "/nix/store/*/lib/libopus.so*",
+                "/usr/lib/*/libopus.so*",
+                "/usr/lib/libopus.so*",
+                "/usr/local/lib/libopus.so*"):
+        adaylar.extend(sorted(_g.glob(pat)))
+    for lib in adaylar:
         try:
             discord.opus.load_opus(lib)
-            print(f"Opus yüklendi: {lib}", flush=True)
-            break
+            if discord.opus.is_loaded():
+                print(f"✅ Opus yüklendi: {lib}", flush=True)
+                return
         except Exception:
             continue
+    print("⚠️ Opus YÜKLENEMEDI — ses çalışmayabilir!", flush=True)
+
+_opus_yukle()
 
 # ---------------------------------------------------------------------------
 # Sabitler — Ortam değişkenlerinden oku
