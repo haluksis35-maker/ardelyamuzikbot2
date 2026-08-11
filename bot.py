@@ -63,24 +63,33 @@ import glob as _glob
 
 def _ffmpeg_bul() -> str:
     """ffmpeg çalıştırılabilir dosyasını her yerde ara."""
-    # 1) PATH içinde ara
+    # 1) imageio-ffmpeg paketi (pip ile gelen gömülü ffmpeg — en güvenilir)
+    try:
+        import imageio_ffmpeg
+        yol = imageio_ffmpeg.get_ffmpeg_exe()
+        if yol and os.path.exists(yol):
+            print(f"ffmpeg (imageio) bulundu: {yol}", flush=True)
+            return yol
+    except Exception as e:
+        print(f"imageio-ffmpeg bulunamadı: {e}", flush=True)
+    # 2) PATH içinde ara
     yol = shutil.which("ffmpeg")
     if yol:
         return yol
-    # 2) Ortam değişkeni (start.sh tarafından ayarlanır)
+    # 3) Ortam değişkeni (start.sh tarafından ayarlanır)
     env_yol = os.environ.get("FFMPEG_LOCATION", "")
     if env_yol and os.path.exists(env_yol):
         return env_yol
-    # 3) Yaygın sabit yollar
+    # 4) Yaygın sabit yollar
     for p in ("/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/bin/ffmpeg"):
         if os.path.exists(p):
             return p
-    # 4) Nix store içinde ara (Railway/Nixpacks)
+    # 5) Nix store içinde ara (Railway/Nixpacks)
     for pat in ("/nix/store/*ffmpeg*/bin/ffmpeg", "/nix/store/*/bin/ffmpeg"):
         eslesenler = _glob.glob(pat)
         if eslesenler:
             return eslesenler[0]
-    # 5) Bulunamazsa varsayılana düş (PATH'e güven)
+    # 6) Bulunamazsa varsayılana düş (PATH'e güven)
     return "ffmpeg"
 
 FFMPEG_PATH = _ffmpeg_bul()
