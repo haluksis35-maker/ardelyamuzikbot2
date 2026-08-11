@@ -58,7 +58,36 @@ RENK_BASARI = 0x57F287
 RENK_HATA   = 0xED4245
 RENK_BILGI  = 0xFEE75C
 
+import shutil
+import glob as _glob
+
+def _ffmpeg_bul() -> str:
+    """ffmpeg çalıştırılabilir dosyasını her yerde ara."""
+    # 1) PATH içinde ara
+    yol = shutil.which("ffmpeg")
+    if yol:
+        return yol
+    # 2) Ortam değişkeni (start.sh tarafından ayarlanır)
+    env_yol = os.environ.get("FFMPEG_LOCATION", "")
+    if env_yol and os.path.exists(env_yol):
+        return env_yol
+    # 3) Yaygın sabit yollar
+    for p in ("/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/bin/ffmpeg"):
+        if os.path.exists(p):
+            return p
+    # 4) Nix store içinde ara (Railway/Nixpacks)
+    for pat in ("/nix/store/*ffmpeg*/bin/ffmpeg", "/nix/store/*/bin/ffmpeg"):
+        eslesenler = _glob.glob(pat)
+        if eslesenler:
+            return eslesenler[0]
+    # 5) Bulunamazsa varsayılana düş (PATH'e güven)
+    return "ffmpeg"
+
+FFMPEG_PATH = _ffmpeg_bul()
+print(f"ffmpeg yolu: {FFMPEG_PATH}", flush=True)
+
 FFMPEG_OPTIONS = {
+    "executable": FFMPEG_PATH,
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
     "options": "-vn",
 }
