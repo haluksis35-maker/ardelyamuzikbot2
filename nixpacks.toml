@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["ffmpeg", "libopus", "nodejs_22", "cairo", "pango", "giflib", "libjpeg", "librsvg", "pkg-config", "python3"]
+
+[phases.build]
+cmds = ["cd bgutil-ytdlp-pot-provider/server && npm install --omit=dev 2>&1 | tail -5 || npm install --omit=dev --ignore-scripts 2>&1 | tail -5"]
+
+[start]
+cmd = "bash start.sh"
