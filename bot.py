@@ -367,7 +367,15 @@ async def sonraki_cal(guild_id: int):
 @tree.command(name="oynat", description="YouTube'dan şarkı çalar")
 @app_commands.describe(sorgu="Şarkı adı veya YouTube URL'si")
 async def oynat(interaction: discord.Interaction, sorgu: str):
-    await interaction.response.defer(thinking=True)
+    try:
+        await interaction.response.defer(thinking=True)
+    except discord.NotFound:
+        # Etkileşim süresi dolmuş (eski/stale interaction) — sessizce çık, bot çökmesin
+        print("⚠️ Etkileşim süresi dolmuş, komut atlanıyor (stale interaction).", flush=True)
+        return
+    except discord.HTTPException as e:
+        print(f"⚠️ defer başarısız: {e}", flush=True)
+        return
 
     if not interaction.user.voice or not interaction.user.voice.channel:
         await interaction.followup.send(
