@@ -85,28 +85,31 @@ import shutil
 import glob as _glob
 
 def _ffmpeg_bul() -> str:
-    """ffmpeg çalıştırılabilir dosyasını her yerde ara."""
-    # 1) imageio-ffmpeg paketi (pip ile gelen gömülü ffmpeg — en güvenilir)
-    try:
-        import imageio_ffmpeg
-        yol = imageio_ffmpeg.get_ffmpeg_exe()
-        if yol and os.path.exists(yol):
-            print(f"ffmpeg (imageio) bulundu: {yol}", flush=True)
-            return yol
-    except Exception as e:
-        print(f"imageio-ffmpeg bulunamadı: {e}", flush=True)
-    # 2) PATH içinde ara
+    """ffmpeg çalıştırılabilir dosyasını her yerde ara.
+    Öncelik: SİSTEM ffmpeg (apt ile kurulan, en sağlam) → imageio statik → nix."""
+    # 1) PATH içindeki sistem ffmpeg'i (Docker'da apt ile kurulan — en güvenilir)
     yol = shutil.which("ffmpeg")
     if yol:
+        print(f"ffmpeg (sistem) bulundu: {yol}", flush=True)
         return yol
+    # 2) Yaygın sabit sistem yolları
+    for p in ("/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/bin/ffmpeg"):
+        if os.path.exists(p):
+            print(f"ffmpeg (sistem yolu) bulundu: {p}", flush=True)
+            return p
     # 3) Ortam değişkeni (start.sh tarafından ayarlanır)
     env_yol = os.environ.get("FFMPEG_LOCATION", "")
     if env_yol and os.path.exists(env_yol):
         return env_yol
-    # 4) Yaygın sabit yollar
-    for p in ("/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/bin/ffmpeg"):
-        if os.path.exists(p):
-            return p
+    # 4) imageio-ffmpeg (yedek — sistemde ffmpeg yoksa)
+    try:
+        import imageio_ffmpeg
+        yol = imageio_ffmpeg.get_ffmpeg_exe()
+        if yol and os.path.exists(yol):
+            print(f"ffmpeg (imageio yedek) bulundu: {yol}", flush=True)
+            return yol
+    except Exception as e:
+        print(f"imageio-ffmpeg bulunamadı: {e}", flush=True)
     # 5) Nix store içinde ara (Railway/Nixpacks)
     for pat in ("/nix/store/*ffmpeg*/bin/ffmpeg", "/nix/store/*/bin/ffmpeg"):
         eslesenler = _glob.glob(pat)
